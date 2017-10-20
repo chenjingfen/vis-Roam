@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>拓扑图</title>
+</head>
+<body>
+<style type="text/css">
+
+    #mynetwork {
+        width: 100%;
+        height: 770px;
+        border: 1px solid lightgray;
+        background: url("../img/bg.png");
+    }
+</style>
+<div id="mynetwork"></div>
+<script src="../lib/jquery-3.2.1.js"></script>
+<script src="../lib/vis/vis.js"></script>
+<script type="text/javascript">
+    var dom = {
+                x: 0,
+                y: 0
+            },
+            nodes = new vis.DataSet(),
+            edges = new vis.DataSet(),
+            area = {
+                xmax: window.screen.width * 0.8,
+                xmin: window.screen.width * 0.2,
+                ymax: window.screen.height * 0.8,
+                ymin: window.screen.height * 0.2,
+            };
+    function initNodes() {
+        nodes.clear();
+        var node = [];
+        for (var i = 0; i < 100; i++) {
+            node.push({id: i, "label": "label" + i, "group": parseInt(i / 10), "des": "node" + i});
+        }
+        nodes.add(node);
+    }
+
+    function initedges() {
+        edges.clear();
+        var edge = [];
+        for (var i = 0; i < 100; i++) {
+            edge.push({"from": parseInt((99) * Math.random()), "to": parseInt((99) * Math.random())});
+        }
+        edges.add(edge);
+    }
+    initNodes();
+    initedges();
+    var data = {
+        nodes: nodes,
+        edges: edges
+    };
+
+
+    // create a network
+    var container = document.getElementById('mynetwork');
+
+
+    var options = {
+
+        nodes: {
+            shape: 'image',
+            size: 18,
+            font: {
+                size: 12,
+                color: '#ffffff'
+            },
+            image: '../img/vis/switchBoard.png',
+
+        }, edges: {
+            width: 0.15,
+            smooth: {
+                type: 'continuous'
+            }
+        },
+        interaction: {
+            tooltipDelay: 200,
+            dragNodes: false
+        },
+        physics: {
+            stabilization: false,
+            barnesHut: {
+                gravitationalConstant: -10000,
+                springConstant: 0.002,
+                springLength: 150
+            }
+        },layout: {
+           /* hierarchical: {
+                direction: 'LR'
+            }*/
+        }
+    };
+    var network = new vis.Network(container, data, options);
+
+
+    network.on("dragStart", function (params) {
+        console.log('dragStart')
+
+        dom.x = params.pointer.DOM.x;
+        dom.y = params.pointer.DOM.y;
+
+    });
+    network.on("dragging", function (params) {
+        // params.event = "[original event]";
+        console.log('dragging')
+        /*  console.log(params);*/
+    });
+    network.on("dragEnd", function (params) {
+        //params.event = "[original event]";
+        console.log('dragEnd')
+        /*
+         * xDiff>0   右移
+         * xDiff<0   左移
+         * yDiff>0   下移
+         * yDiff<0   上移
+         * */
+
+
+
+            var xDiff = params.pointer.DOM.x - dom.x,
+                    yDiff = params.pointer.DOM.y - dom.y;
+            console.log(xDiff, yDiff)
+            var nodesId = getNodesId(nodes);
+            var positions = network.getPositions(nodesId);
+            var added = getAddNode(nodesId, positions, xDiff, yDiff);
+
+        if(nodes.length<200){
+            network.selectNodes(added, true);
+            for (var i = 0; i < added.length; i++) {
+                for (var j = 0; j < 5; j++) {
+                    var id = 'added' + Math.random();
+                    addNode(id, id);
+                    addEdge(added[i], id);
+                }
+            }
+        }
+
+
+    });
+
+
+    network.on("zoom", function (params) {
+        if (params.direction == '-') {
+
+        }
+        else {
+
+        }
+    });
+
+
+    function getNodesId(nodes) {
+        var nodesId = [];
+        var data = nodes._data;
+
+        for (var item in data) {
+
+            nodesId.push(data[item]['id']);
+        }
+
+        return nodesId;
+    }
+
+    function getAddNode(nodesId, positions, xDiff, yDiff) {
+        var added = [];
+
+        var width = window.screen.width, height = window.screen.height;
+        for (var i = 0; i < nodesId.length; i++) {
+            var DOMPos = network.canvasToDOM(positions[nodesId[i]]);
+            if (DOMPos.x > 0 && DOMPos.x < width && DOMPos.y > 0 && DOMPos.y < height) {
+                if (!(DOMPos.x >= area.xmin && DOMPos.x <= area.xmax && DOMPos.y >= area.ymin && DOMPos.y <= area.ymax)) {
+                    var top = [], left = [], bottom = [], right = [], top_left = [], top_right = [], bottom_right = [], bottom_left = [];
+                    var id = nodesId[i];
+                    //top
+                    if (DOMPos.x >= area.xmin && DOMPos.x <= area.xmax && DOMPos.y >= 0 && DOMPos.y <= area.ymin) {
+
+                        getSingleNode(id, top);
+
+                    }
+
+                    //top_right
+                    if (DOMPos.x >= area.xmax && DOMPos.x <= width && DOMPos.y >= 0 && DOMPos.y <= area.ymin) {
+
+                        getSingleNode(id, top_right);
+
+                    }
+
+                    //right
+                    if (DOMPos.x >= area.xmax && DOMPos.x <= width && DOMPos.y >= area.ymin && DOMPos.y <= area.ymax) {
+
+                        getSingleNode(id, right);
+                    }
+
+                    //bottom_right
+                    if (DOMPos.x >= area.xmax && DOMPos.x <= width && DOMPos.y >= area.ymax && DOMPos.y <= height) {
+                        getSingleNode(id, bottom_right);
+                    }
+
+                    //bottom
+                    if (DOMPos.x > area.xmin && DOMPos.x < area.max && DOMPos.y > area.ymax && DOMPos.y < height) {
+
+                        getSingleNode(id, bottom);
+                    }
+
+                    //bottom_left
+                    if (DOMPos.x > 0 && DOMPos.x < area.xmin && DOMPos.y > area.ymax && DOMPos.y < height) {
+                        getSingleNode(id, bottom_left);
+                    }
+
+                    //left
+                    if (DOMPos.x > 0 && DOMPos.x < area.xmin && DOMPos.y > area.ymin && DOMPos.y < area.ymax) {
+                        getSingleNode(id, left);
+                    }
+
+                    //top_left
+                    if (DOMPos.x > 0 && DOMPos.x < area.xmin && DOMPos.y > 0 && DOMPos.y < area.ymin) {
+                        getSingleNode(id, top_left);
+                    }
+
+
+                    if (xDiff < 0 && yDiff <= 0) {
+                        if (yDiff === 0) {
+                            if (top_right.length < 10) {
+                                added = added.concat(top_right);
+                            }
+                            if (bottom_right.length < 10) {
+                                added = added.concat(bottom_right);
+                            }
+                            if (right.length < 10) {
+                                added = added.concat(right);
+                            }
+
+                        } else {
+                            if (bottom.length < 10) {
+                                added = added.concat(bottom);
+                            }
+                            if (bottom_right.length < 10) {
+                                added = added.concat(bottom_right);
+                            }
+                            if (right.length < 10) {
+                                added = added.concat(right);
+                            }
+                        }
+
+
+                    } else if (xDiff <= 0 && yDiff > 0) {
+                        if (xDiff === 0) {
+                            if (top.length < 10) {
+                                added = added.concat(top);
+                            }
+                            if (top_right.length < 10) {
+                                added = added.concat(top_right);
+                            }
+                            if (top_left.length < 10) {
+                                added = added.concat(top_left);
+                            }
+                        } else {
+                            if (top.length < 10) {
+                                added = added.concat(top);
+                            }
+                            if (top_right.length < 10) {
+                                added = added.concat(top_right);
+                            }
+                            if (right.length < 10) {
+                                added = added.concat(right);
+                            }
+                        }
+
+
+                    } else if (xDiff >= 0 && yDiff < 0) {
+                        if (xDiff === 0) {
+                            if (bottom.length < 10) {
+                                added = added.concat(bottom);
+                            }
+                            if (bottom_left.length < 10) {
+                                added = added.concat(bottom_left);
+                            }
+                            if (bottom_right.length < 10) {
+                                added = added.concat(bottom_right);
+                            }
+                        } else {
+                            if (left.length < 10) {
+                                added = added.concat(left);
+                            }
+                            if (bottom_left.length < 10) {
+                                added = added.concat(bottom_left);
+                            }
+                            if (bottom.length < 10) {
+                                added = added.concat(bottom);
+                            }
+                        }
+
+
+                    } else if (xDiff > 0 && yDiff >= 0) {
+                        if (yDiff === 0) {
+                            if (top.length < 10) {
+                                added = added.concat(top);
+                            }
+                            if (top_left.length < 10) {
+                                added = added.concat(top_left);
+                            }
+                            if (bottom_left.length < 10) {
+                                added = added.concat(bottom_left);
+                            }
+                        } else {
+                            if (top.length < 10) {
+                                added = added.concat(top);
+                            }
+                            if (top_left.length < 10) {
+                                added = added.concat(top_left);
+                            }
+                            if (left.length < 10) {
+                                added = added.concat(left);
+                            }
+                        }
+
+
+                    }
+
+                }
+            } else {
+
+                /* nodes._data.*/
+                removeNode(nodesId[i]);
+
+            }
+        }
+        return added;
+    }
+
+    function getSingleNode(id, data) {
+        console.log("------------------------datadata");
+        console.log(data);
+        var eds = network.getConnectedEdges(id);
+        if (eds.length <= 1) {
+            data.push(id);
+        }
+    }
+
+
+    function removeNode(id) {
+        try {
+            nodes.remove(id);
+
+        }
+        catch (err) {
+            alert(err);
+        }
+    }
+
+    function addEdge(from, to) {
+        try {
+            edges.add({
+                from: from,
+                to: to
+            });
+        }
+        catch (err) {
+            alert(err);
+        }
+    }
+    function addNode(id, label) {
+        try {
+            nodes.add({
+                id: id,
+                label: label,
+                group: parseInt((10) * Math.random()),
+            });
+        }
+        catch (err) {
+            alert(err);
+        }
+    }
+
+
+</script>
+</body>
+</html>
